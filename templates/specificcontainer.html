@@ -1,0 +1,16 @@
+<!doctype html>
+  <title>Container</title>
+  <h1>Container Details</h1>
+    <p>{{ output }}</p>
+  <h1>Container Logs</h1>
+    <p>{{ logs }}</p>
+  <h1>Delete This Container</h1>
+     <form method=get>
+       <input type="submit" name="deleteall" value="Delete">
+       <input type="hidden" name="_method" value="DELETE">
+     </form>
+    <h1>Stop/Start This Container</h1>
+     <form method=get>
+       <input type="submit" name="start" value="Start">
+       <input type="submit" name="stop" value="Stop">
+     </form>

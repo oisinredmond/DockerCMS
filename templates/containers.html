@@ -1,0 +1,17 @@
+<!doctype html>
+  <title>Containers index</title>
+    <h1>List Containers</h1>
+       <form action="/containers" method=get>
+         <input type="submit" name="List" value="running">
+         <input type="submit" name="List" value="all">
+       </form>
+     <h1>Create Container</h1>
+       <form action="/containers" method=post>
+         <input type="text" name="createcontainer" placeholder="Image ID or Name">
+         <input type="submit" name="createcontainer" value="submit"> 
+       </form>
+     <h1>Delete Containers</h1>
+       <form method="DELETE">
+         <input type="submit" name="deleteall" value="Delete all">
+         <input type="hidden" name="_method" value="DELETE">
+       </form>

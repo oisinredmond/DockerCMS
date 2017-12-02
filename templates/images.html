@@ -1,0 +1,17 @@
+<!doctype html>
+  <title>Images index</title>
+    <h1>List Images</h1>
+       <form action="/images" method=get>
+         <input type="submit" name="list" value="all">
+       </form>
+     <h1>Create Image</h1>
+       <form action="/images" method=post>
+         <input type="text" name="imagepath" placeholder="Folder path"></br>
+         <input type="text" name="imagename" placeholder="Image name (optional)"></br>
+         <input type="submit" name="createimage" value="Create">
+       </form>
+     <h1>Delete All Images</h1>
+       <form method=get>
+         <input type="submit" name="deleteall" value="Delete all">
+         <input type="hidden" name="_method" value="DELETE">
+       </form>
