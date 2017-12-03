@@ -10,21 +10,22 @@ app = Flask(__name__)
 @app.route("/")
 def index():
     return """
-Available API endpoints:\n
-GET /containers                     List all containers\n  ++
-GET /containers?state=running      List running containers (only)\n  ++
-GET /containers/<id>                Inspect a specific container\n  ++
-GET /containers/<id>/logs           Dump specific container logs\n  ++
-GET /images                         List all images\n  ++
-POST /images                        Create a new image\n
-POST /containers                    Create a new container\n  ++
-PATCH /containers/<id>              Change a container's state\n
-PATCH /images/<id>                  Change a specific image's attributes\n
-DELETE /containers/<id>             Delete a specific container\n
-DELETE /containers                  Delete all containers (including running)\n ++
-DELETE /images/<id>                 Delete a specific image\n
-DELETE /images                      Delete all images\n ++
-"""
+    <!doctype html>
+     <h3>Available API endpoints:</h3>
+     <p>GET /containers:                     List all containers</p>
+     <p>GET /containers?state=running:       List running containers (only)</p>
+     <p>GET /containers/&ltid&gt:            Inspect a specific container</p>
+     <p>GET /containers/&ltid&gt/logs:       Dump specific container logs</p>
+     <p>GET /images:                         List all images</p>
+     <p>POST /images:                        Create a new image</p>
+     <p>POST /containers:                    Create a new container</p>
+     <p>PATCH /containers/&ltid&gt:          Change a container's state</p>
+     <p>PATCH /images/&ltid&gt:              Change a specific image's attributes</p>
+     <p>DELETE /containers/&ltid&gt:         Delete a specific container</p>
+     <p>DELETE /containers:                  Delete all containers (including running)</p>
+     <p>DELETE /images/&ltid&gt:             Delete a specific image</p>
+     <p>DELETE /images:                      Delete all images</p>
+    """
 
 @app.route('/containers',methods=['GET'])
 def containers_index():
@@ -32,8 +33,8 @@ def containers_index():
     """
     List all containers
 
-    curl -s -X GET -H 'Accept: application/json' http://localhost:8080/containers | python -mjson.tool
-    curl -s -X GET -H 'Accept: application/json' http://localhost:8080/containers?state=running | python -mjson.tool
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/containers?list=all | python -mjson.tool
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/containers?list=running | python -mjson.tool
     """
     if request.args.get('list')=='running': 
         output = docker('ps')
@@ -52,7 +53,8 @@ def containers_index():
             docker('stop',id)
             docker('rm',id)
 
-        return Markup('<p>All containers deleted</p>')
+        resp = 'All containers deleted'
+        return Response(response=resp, mimetype="application/json")
 
     else:
         return render_template("containers.html")
@@ -62,7 +64,7 @@ def images_index():
     """
     List all images
 
-    curl -s -X GET -H 'Accept: application/json' http://localhost:8080/images | python -mjson.tool 
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/images?list=all | python -mjson.tool 
     """
     if request.args.get('list')=='all':
         output = docker('images')
@@ -75,7 +77,8 @@ def images_index():
             id = d['id']
             docker('rmi',id)
 
-        return Response('<p>All images deleted</p>')
+        resp = 'All images deleted'
+        return Response(response=resp, mimetype="application/json")
 
     else:
         return render_template('images.html')
@@ -86,20 +89,23 @@ def containers_show(id):
     """
     Inspect specific container
 
-    curl -s -X GET -H 'Accept: application/json' http://localhost:8080/containers/<id> | python -mjson.tool
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/containers/<id> | python -mjson.tool
     """
 
     if request.args.get('_method')=='DELETE':
         docker('rm',id)
-        return Markup('<p>Container '+id+' deleted</p>')
+        resp = 'Container '+id+' deleted'
+        return Response(response=resp,mimetype='application/json')
 
-    elif request.args.get('start')=='Start':
+    elif request.args.get('stopstart')=='Start':
         docker('start',id)
-        return Markup('<p>Container '+id+' started</p>')
+        resp = 'Container '+id+' started'
+        return Response(response=resp,mimetype='application/json')
 
-    elif request.args.get('stop')=='Stop':
+    elif request.args.get('stopstart')=='Stop':
         docker('stop',id)
-        return Markup('<p>Container '+id+' stopped</p>')
+        resp = 'Container '+id+' stopped'
+        return Response(response=resp,mimetype='application/json')
 
     else:
         logs = '<a href =\"' +id
@@ -112,7 +118,7 @@ def containers_show(id):
 def containers_log(id):
     """
     Dump specific container logs
-    curl -s -X GET -H 'Accept: application/json' http://localhost:8080/containers/<id>/logs | python -mjson.tool
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/containers/<id>/logs | python -mjson.tool
     """
 
     output = docker('logs',id)
@@ -125,7 +131,7 @@ def services_index():
     """
     List all services
 
-    curl -s -X GET -H 'Accept: application/json' http://localhost:8080/services | python -mjson.tool
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/services | python -mjson.tool
     """
 
     output = docker('service','ls')
@@ -138,7 +144,7 @@ def nodes_index():
     """
     List all nodes
 
-    curl -s -X GET -H 'Accept: application/json' http://localhost:8080/nodes | python -mjson.tool
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/nodes | python -mjson.tool
     """
 
     output = docker('node','ls')
@@ -148,15 +154,21 @@ def nodes_index():
 
 @app.route('/images/<id>', methods=['GET'])
 def images_remove(id):
+    """
+    Inspect a specific image
+
+    curl -s -X GET -H 'Accept: application/json' http://localhost:5000/images/<id> | python -mjson.tool
+    """
 
     if request.args.get('_method')=='DELETE':
         docker ('rmi', id)
-        return Markup('<p>Image '+id+' deleted')
+        resp ='Image '+id+' deleted'
 
     elif request.args.get('rename')=='Rename':
         name = request.form['rename']
         docker('tag',id,name+':latest')
-        return Markup('<p>Image '+id+' renamed to '+name+'</p>')
+        resp = 'Image '+id+' renamed to '+name
+        return Response(response=resp,mimetype='json/application')
 
     else:
         return render_template('specificimage.html')
@@ -165,27 +177,114 @@ def images_remove(id):
 def containers_create():
     """
     Create container (from existing image using id or name)
-    curl -X POST -H 'Content-Type: application/json' http://localhost:8080/containers -d '{"image": "my-app"}'
-    curl -X POST -H 'Content-Type: application/json' http://localhost:8080/containers -d '{"image": "b14752a6590e"}'
-    curl -X POST -H 'Content-Type: application/json' http://localhost:8080/containers -d '{"image": "b14752a6590e","publish":"8081:22"}'
+    curl -s -X POST -H 'Content-Type: application/json' -F 'creatcontainer=[image id]' http://localhost:5000/containers | python -mjson.tool
     """
     image_id = request.form['createcontainer']
     id = (docker('run','-d',image_id)[0:12]).decode('utf-8')
-    return Markup('<p>Container '+id+' created</p>')
+    resp='Container '+id+' created'
+    return Response(response=resp,mimetype='application/json')
 
 
 @app.route('/images', methods=['POST'])
 def images_create():
     """
     Create image (from uploaded Dockerfile)
-    curl -X POST -H 'Content-Type: application/json' http://localhost:8080/images '{"id": "b14752a6590e"}'
+    curl -s -X POST -H 'Accept: application/json' -F 'imagename=[image name]' -F 'imagepath=[image path]' http://localhost:5000/images | python -mjson.tool
     """
 
     image_path = '../'+request.form['imagepath']
     image_name = request.form['imagename']
     docker('build','-t',image_name,image_path)
-    return Markup('<p>Image '+id+' created</p>')
+    resp='Image created'
+    return Response(response=resp,mimetype='application/json')
 
+@app.route('/containers',methods=['DELETE'])
+def containers_delete():
+
+    """
+    Force remove all containers
+
+    curl -s -X DELETE -H 'Accept: application/json' http://localhost:5000/containers | python -mjson.tool
+    """
+
+    output = docker_ps_to_array(docker('ps','-a'))
+    for d in output:
+        id = d['id']
+        docker('stop',id)
+        docker('rm',id)
+
+    resp = 'All images removed.'
+    return Response(response=resp,mimetype="application/json")
+
+@app.route('/images',methods=['DELETE'])
+def images_delete():
+    """
+    Force remove all images
+
+    curl -s -X DELETE -H 'Accept: application/json' http://localhost:5000/images | python -mjson.tool
+    """
+    output = docker_images_to_array(docker('images'))
+    for d in output:
+        id = d['id']
+        docker('rmi',id)
+
+    resp = 'All images removed.'
+    return Response(response=resp,mimetype="application/json")
+
+@app.route('/containers/<id>',methods=['DELETE'])
+def container_delete(id):
+    """
+    Delete a specific container
+
+    curl -s -X DELETE -H 'Accept: application/json' http://localhost:5000/containers/<id> | python -mjson.tool
+    """
+    docker('stop',id)
+    docker('rm',id)
+    resp = 'Container '+id+' removed'
+    return Response(response=resp,mimetype='application/json')
+
+@app.route('/images/<id>',methods=['DELETE'])
+def image_delete(id):
+    """
+    Delete a specific image
+
+    curl -s -X DELETE -H 'Accept: application/json' http://localhost:5000/images/<id> | python -mjson.tool
+    """
+    docker('rmi',id)
+    resp='Image '+id+' removed'
+    return Response(response=resp,mimetype='application/json')
+
+@app.route('/containers/<id>',methods=['PATCH'])
+def container_stop(id):
+    """
+    Stop or start a container
+
+    curl -X PATCH -H 'Accept: application/json' -F 'stopstart=Start' http://localhost:5000/containers/<id> | python -mjson.tool
+    """
+
+    if request.args.get('stopstart')=='Start':
+        docker('start',id)
+        resp = 'Container '+id+' started'
+        return Response(response=resp,mimtype='application/json')
+
+    elif request.args.get('stopstart')=='Stop':
+        docker('stop',id)
+        resp ='Container '+id+' stopped'
+        return Response(response=resp,mimtype='application/json')
+
+
+@app.route('/images/<id>',methods=['PATCH'])
+def image_rename(id):
+    """
+    Update image attributes. Tag should be lowercase only
+
+    curl -X PATCH -H 'Accept: application/json' -F 'rename=[new name]' http://localhost:5000/images/<id> | python -mjson.tool
+    """
+
+    name = request.form['rename']
+    docker('tag',id,name+':latest')
+    resp = 'Image '+id+' renamed to '+name
+    return Response(response=resp,mimetype='application/json')
 
 def docker(*args):
     cmd = ['sudo','docker']
