@@ -1,3 +1,6 @@
+#Cloud Computing Assignment 2 - Docker Container Management System
+#Oisin Redmond - C15492202
+
 from flask import Flask, Response, render_template, request, Markup
 import json
 from subprocess import Popen, PIPE
@@ -12,11 +15,14 @@ def index():
     return """
     <!doctype html>
      <h3>Available API endpoints:</h3>
-     <p>GET /containers:                     List all containers</p>
-     <p>GET /containers?state=running:       List running containers (only)</p>
+     <p>GET /containers?list=all:            List all containers</p>
+     <p>GET /containers?list=running:        List running containers (only)</p>
      <p>GET /containers/&ltid&gt:            Inspect a specific container</p>
      <p>GET /containers/&ltid&gt/logs:       Dump specific container logs</p>
-     <p>GET /images:                         List all images</p>
+     <p>GET /images?list=all:                List all images</p>
+     <p>GET /images/<id>:                    Show a specific image
+     <p>GET /nodes:                          List all nodes</p>
+     <p>GET /services:                       List all services</p>
      <p>POST /images:                        Create a new image</p>
      <p>POST /containers:                    Create a new container</p>
      <p>PATCH /containers/&ltid&gt:          Change a container's state</p>
@@ -36,16 +42,20 @@ def containers_index():
     curl -s -X GET -H 'Accept: application/json' http://localhost:5000/containers?list=all | python -mjson.tool
     curl -s -X GET -H 'Accept: application/json' http://localhost:5000/containers?list=running | python -mjson.tool
     """
+
+    #If user clicks "running" button
     if request.args.get('list')=='running': 
         output = docker('ps')
         resp = json.dumps(docker_ps_to_array(output))
         return Response(response=resp, mimetype="application/json")
 
+    #If user clicks "all" button
     elif request.args.get('list')=='all':
         output = docker('ps', '-a')
         resp = json.dumps(docker_ps_to_array(output))
         return Response(response=resp, mimetype="application/json")
 
+    #If user clicks "delete" button
     elif request.args.get('_method')=='DELETE':
         output = docker_ps_to_array(docker('ps','-a'))
         for d in output:
@@ -56,8 +66,10 @@ def containers_index():
         resp = 'All containers deleted'
         return Response(response=resp, mimetype="application/json")
 
+    #Render html menu page
     else:
         return render_template("containers.html")
+
 
 @app.route('/images', methods=['GET'])
 def images_index():
@@ -66,11 +78,14 @@ def images_index():
 
     curl -s -X GET -H 'Accept: application/json' http://localhost:5000/images?list=all | python -mjson.tool 
     """
+
+    #If user clicks "all" button
     if request.args.get('list')=='all':
         output = docker('images')
         resp = json.dumps(docker_images_to_array(output))
         return Response(response=resp, mimetype="application/json")
 
+    #If user clicks "delete" button
     if request.args.get('_method')=='DELETE':
         output = docker_images_to_array(docker('images'))
         for d in output:
@@ -80,8 +95,11 @@ def images_index():
         resp = 'All images deleted'
         return Response(response=resp, mimetype="application/json")
 
+    #Render html menu page
     else:
         return render_template('images.html')
+
+
 
 @app.route('/containers/<id>', methods=['GET'])
 def containers_show(id):
@@ -92,27 +110,32 @@ def containers_show(id):
     curl -s -X GET -H 'Accept: application/json' http://localhost:5000/containers/<id> | python -mjson.tool
     """
 
+    #If user clicks "delete" button
     if request.args.get('_method')=='DELETE':
         docker('rm',id)
         resp = 'Container '+id+' deleted'
         return Response(response=resp,mimetype='application/json')
 
+    #If user clicks "start" button
     elif request.args.get('stopstart')=='Start':
         docker('start',id)
         resp = 'Container '+id+' started'
         return Response(response=resp,mimetype='application/json')
 
+    #If user clicks "Stop" button
     elif request.args.get('stopstart')=='Stop':
         docker('stop',id)
         resp = 'Container '+id+' stopped'
         return Response(response=resp,mimetype='application/json')
 
+    #Render html menu page with a link to container logs endpoint
     else:
         logs = '<a href =\"' +id
         logs += '/logs\">View Container Logs</a>'
         logs = Markup(logs)
-        output = docker_ps_to_array(docker('ps','-a','-f','id='+id))
+        output = docker_ps_to_array(docker('ps','-a','-f','id='+id)) #Output is passed to the html and rendered at top of page
         return render_template("specificcontainer.html",output=output,logs=logs)
+
 
 @app.route('/containers/<id>/logs', methods=['GET'])
 def containers_log(id):
@@ -160,18 +183,22 @@ def images_remove(id):
     curl -s -X GET -H 'Accept: application/json' http://localhost:5000/images/<id> | python -mjson.tool
     """
 
+    #If user presses "delete" button
     if request.args.get('_method')=='DELETE':
         docker ('rmi', id)
         resp ='Image '+id+' deleted'
 
+    #If user presses rename and enters a name into textbox
     elif request.args.get('rename')=='Rename':
         name = request.form['rename']
         docker('tag',id,name+':latest')
         resp = 'Image '+id+' renamed to '+name
         return Response(response=resp,mimetype='json/application')
 
+    #Render menu html page
     else:
         return render_template('specificimage.html')
+
 
 @app.route('/containers', methods=['POST'])
 def containers_create():
@@ -179,6 +206,7 @@ def containers_create():
     Create container (from existing image using id or name)
     curl -s -X POST -H 'Content-Type: application/json' -F 'creatcontainer=[image id]' http://localhost:5000/containers | python -mjson.tool
     """
+    #Gets image id from createcontainer form
     image_id = request.form['createcontainer']
     id = (docker('run','-d',image_id)[0:12]).decode('utf-8')
     resp='Container '+id+' created'
@@ -192,11 +220,16 @@ def images_create():
     curl -s -X POST -H 'Accept: application/json' -F 'imagename=[image name]' -F 'imagepath=[image path]' http://localhost:5000/images | python -mjson.tool
     """
 
+    #Get image path and image name from forms in html or curl command
     image_path = '../'+request.form['imagepath']
     image_name = request.form['imagename']
     docker('build','-t',image_name,image_path)
     resp='Image created'
     return Response(response=resp,mimetype='application/json')
+
+#
+#Delete methods for use with curl commands in bash
+#
 
 @app.route('/containers',methods=['DELETE'])
 def containers_delete():
@@ -231,6 +264,7 @@ def images_delete():
     resp = 'All images removed.'
     return Response(response=resp,mimetype="application/json")
 
+
 @app.route('/containers/<id>',methods=['DELETE'])
 def container_delete(id):
     """
@@ -243,6 +277,7 @@ def container_delete(id):
     resp = 'Container '+id+' removed'
     return Response(response=resp,mimetype='application/json')
 
+
 @app.route('/images/<id>',methods=['DELETE'])
 def image_delete(id):
     """
@@ -253,6 +288,10 @@ def image_delete(id):
     docker('rmi',id)
     resp='Image '+id+' removed'
     return Response(response=resp,mimetype='application/json')
+
+#
+#Patch methods for use with curl commands in bash
+#
 
 @app.route('/containers/<id>',methods=['PATCH'])
 def container_stop(id):
@@ -300,9 +339,8 @@ def docker(*args):
 # Docker output parsing helpers
 #
 
-#
+
 # Parses the output of a Docker PS command to a python List
-# 
 def docker_ps_to_array(output):
     all = []
     for c in [line.split() for line in output.splitlines()[1:]]:
@@ -313,7 +351,6 @@ def docker_ps_to_array(output):
         all.append(each)
     return all
 
-#
 # Parses the output of a Docker logs command to a python Dictionary
 # (Key Value Pair object)
 def docker_logs_to_object(id, output):
@@ -325,9 +362,7 @@ def docker_logs_to_object(id, output):
     logs['logs'] = all
     return logs
 
-#
 # Parses the output of a Docker image command to a python List
-# 
 def docker_images_to_array(output):
     all = []
     for c in [line.split() for line in output.splitlines()[1:]]:
@@ -352,9 +387,8 @@ def docker_services_to_array(output):
         each['ports'] = c[5].decode('utf-8')
         all.append(each)
     return all
-#
+
 # Parses output of Docker node command to a python list
-#
 def docker_nodes_to_array(output):
     all = []
     for c in [line.split() for line in output.splitlines()[1:]]:
